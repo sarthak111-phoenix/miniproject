@@ -1,0 +1,265 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String         @id @default(uuid())
+  email            String         @unique
+  phone            String?
+  passwordHash     String
+  role             String         @default("student") // "student" | "citizen" | "farmer" | "admin" | "superadmin"
+  status           String         @default("active")  // "active" | "inactive" | "suspended"
+  adminRoleId      String?
+  adminRole        AdminRole?     @relation(fields: [adminRoleId], references: [id], onDelete: SetNull)
+  twoFactorEnabled Boolean        @default(false)
+  twoFactorSecret  String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  profile          Profile?
+  roadmaps         Roadmap[]
+  documents        UserDocument[]
+  notifications    Notification[]
+  activityFlags    ActivityFlag[]
+}
+
+model AdminRole {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String
+  permissions String   // Stored as JSON string array e.g. ["*"] or ["users.view", "users.manage"]
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+}
+
+model Profile {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName         String
+  age              Int
+  gender           String
+  state            String
+  category         String
+  annualIncome     Float
+  occupation       String
+  educationLevel   String
+  currentCourse    String?
+  currentSemester  Int?
+  cgpaOrPercentage Float?
+  skills           String   @default("[]") // Stored as JSON string
+  targetCareerGoal String?
+  disability       Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Scheme {
+  id                String   @id
+  name              String
+  level             String
+  state             String?
+  categoryType      String   // "Scholarship" | "Welfare" | "Agriculture" | etc.
+  benefitAmount     String
+  deadline          String?
+  portalUrl         String
+  requiredDocuments String   // Stored as JSON string array
+  sourceVersion     String
+  rules             String   // Stored as JSON string
+  status            String   @default("published") // "published" | "draft" | "archived"
+  provider          String?  // e.g. "Ministry of Education", "AICTE", "UGC"
+  description       String?  // Rich summary for admin & public view
+  isFeatured        Boolean  @default(false)
+  launchDate        String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Roadmap {
+  id                 String             @id @default(uuid())
+  userId             String             @unique
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetCareer       String
+  currentCourse      String?
+  currentSemester    Int?
+  progressPercentage Float              @default(0)
+  dataJson           String             @default("{}")
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  milestones         RoadmapMilestone[]
+}
+
+model RoadmapMilestone {
+  id           String    @id @default(uuid())
+  roadmapId    String
+  roadmap      Roadmap   @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+  semester     Int
+  title        String
+  category     String
+  status       String    @default("pending")
+  description  String
+  resources    String    @default("[]") // Stored as JSON string
+  targetSkills String    @default("[]") // Stored as JSON string
+  completedAt  DateTime?
+}
+
+model UserDocument {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  docType       String
+  fileName      String
+  fileUrl       String?
+  status        String    @default("uploaded")
+  uploadedAt    DateTime  @default(now())
+  expiresAt     DateTime?
+  consentLogged Boolean   @default(true)
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String
+  isRead    Boolean  @default(false)
+  actionUrl String?
+  createdAt DateTime @default(now())
+}
+
+model ActivityFlag {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  ipAddress String
+  flagType  String
+  severity  String
+  details   String
+  status    String   @default("pending_review")
+  createdAt DateTime @default(now())
+}
+
+model AdminAuditLog {
+  id         String   @id @default(uuid())
+  adminId    String
+  adminEmail String
+  action     String   // e.g. "CREATE_SCHEME", "UPDATE_USER_STATUS", "PUBLISH_CMS"
+  module     String   // e.g. "users", "scholarships", "schemes", "cms", "ai", "config", "roles"
+  recordId   String?
+  details    String   // JSON string of change or parameters
+  ipAddress  String   @default("127.0.0.1")
+  status     String   @default("success") // "success" | "failure"
+  createdAt  DateTime @default(now())
+}
+
+model CmsContent {
+  id          String    @id @default(uuid())
+  sectionKey  String    @unique // "hero", "overview", "banners", "about", "contact", "faqs", "footer", "blog", "seo"
+  title       String
+  contentJson String    // JSON string containing section-specific content
+  status      String    @default("published") // "draft" | "published" | "archived"
+  version     Int       @default(1)
+  publishedAt DateTime?
+  updatedBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model SiteConfig {
+  id                 String   @id @default("default")
+  siteName           String   @default("Saarthi AI")
+  logoUrl            String?
+  faviconUrl         String?
+  contactEmail       String   @default("support@saarthi.ai")
+  contactPhone       String   @default("+91 1800 123 4567")
+  defaultLanguage    String   @default("en")
+  maintenanceMode    Boolean  @default(false)
+  featureTogglesJson String   @default("{\"aiCopilot\":true,\"documentOcr\":true,\"communityRoadmaps\":true,\"emailAlerts\":false}")
+  socialLinksJson    String   @default("{\"twitter\":\"https://twitter.com\",\"linkedin\":\"https://linkedin.com\",\"github\":\"https://github.com\",\"youtube\":\"https://youtube.com\"}")
+  seoDefaultsJson    String   @default("{\"title\":\"Saarthi AI - National Schemes & Student Roadmap Engine\",\"description\":\"Personalized eligibility matching for 5000+ government schemes.\",\"keywords\":\"scholarships, government schemes, roadmap, career guidance\"}")
+  updatedAt          DateTime @updatedAt
+}
+
+model SupportTicket {
+  id                  String   @id @default(uuid())
+  ticketNumber        String   @unique
+  userId              String?
+  userEmail           String
+  userName            String
+  subject             String
+  description         String
+  category            String   @default("general") // "general" | "eligibility" | "scholarship" | "technical" | "account"
+  priority            String   @default("medium")  // "low" | "medium" | "high" | "urgent"
+  status              String   @default("open")    // "open" | "in_progress" | "resolved" | "closed"
+  assignedToAdminId   String?
+  assignedToAdminName String?
+  internalNotes       String   @default("[]")      // JSON array of note objects
+  resolution          String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model AiKnowledgeDoc {
+  id            String   @id @default(uuid())
+  title         String
+  fileName      String
+  fileUrl       String?
+  mimeType      String   @default("text/plain")
+  extractedText String
+  tokensCount   Int      @default(0)
+  category      String   @default("general")
+  status        String   @default("published") // "uploaded" | "processing" | "reviewed" | "published" | "archived"
+  approvedBy    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Announcement {
+  id              String    @id @default(uuid())
+  title           String
+  message         String
+  category        String    @default("general") // "general" | "deadline" | "maintenance" | "scheme_update"
+  priority        String    @default("medium")  // "low" | "medium" | "high"
+  targetAudience  String    @default("all")     // "all" | "student" | "citizen" | "farmer"
+  deliveryChannel String    @default("in_app")  // "in_app" | "email" | "all"
+  status          String    @default("published") // "draft" | "published" | "scheduled" | "expired"
+  deliveredCount  Int       @default(0)
+  publishedAt     DateTime?
+  expiresAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model AiConfig {
+  id                  String   @id @default("default")
+  provider            String   @default("gemini")
+  modelName           String   @default("gemini-flash-latest")
+  systemInstruction   String   @default("You are Saarthi AI Copilot, a helpful and authoritative guide for Indian government schemes, scholarships, and academic-career roadmaps.")
+  temperature         Float    @default(0.4)
+  maxTokens           Int      @default(2048)
+  dailyUserLimit      Int      @default(100)
+  rateLimitPerMin     Int      @default(10)
+  enabledFeaturesJson String   @default("{\"groundedCitations\":true,\"streaming\":true,\"circuitBreaker\":true}")
+  version             Int      @default(1)
+  updatedAt           DateTime @updatedAt
+}
+
+model IntegrationConfig {
+  id            String    @id @default(uuid())
+  name          String
+  keyName       String    @unique // "gemini_ai", "smtp_email", "myscheme_api", "cloud_storage", "ocr_service"
+  status        String    @default("connected") // "connected" | "disconnected" | "error"
+  lastCheckedAt DateTime?
+  lastError     String?
+  configJson    String    @default("{}") // non-secret parameters e.g. host, port, active model
+  isEnabled     Boolean   @default(true)
+  updatedAt     DateTime  @updatedAt
+}

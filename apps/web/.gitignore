@@ -1,0 +1,21 @@
+# Next.js build output
+.next/
+out/
+
+# Dependencies
+node_modules/
+
+# Production build output
+dist/
+build/
+
+# Environment variables and secrets
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+.env.test
+!.env.example
+!.env.template
+

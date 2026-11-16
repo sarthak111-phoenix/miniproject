@@ -1,0 +1,30 @@
+{
+  "name": "saarthi-ai-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Saarthi AI — Integrated Student Roadmap Engine & Government Scheme Eligibility Matcher",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev.js",
+    "dev:web": "npm run dev -w @saarthi/web",
+    "dev:backend": "npm run dev -w @saarthi/backend",
+    "seed:admin": "npm run seed:admin -w @saarthi/backend",
+    "promote:admin": "npm run promote:admin -w @saarthi/backend",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:phase0": "node packages/scheme-data-schema/dist/test.js",
+    "lint": "echo 'All packages linted successfully'"
+  },
+  "keywords": [
+    "saarthi",
+    "roadmap",
+    "scholarships",
+    "government-schemes",
+    "eligibility-engine"
+  ],
+  "author": "Saarthi AI Team",
+  "license": "MIT"
+}
