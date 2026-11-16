@@ -1,10 +1,10 @@
 {
   "name": "@saarthi/backend",
   "version": "0.1.0",
-  "main": "dist/index.js",
+  "main": "dist/src/index.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "node dist/src/index.js",
     "dev": "node --watch -r ts-node/register src/index.ts",
     "seed:admin": "ts-node src/scripts/seedAdmin.ts",
     "promote:admin": "ts-node src/scripts/promoteSuperAdmin.ts",

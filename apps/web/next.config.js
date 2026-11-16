@@ -7,7 +7,16 @@ const nextConfig = {
     formats: ['image/avif', 'image/webp'],
   },
   async rewrites() {
-    const backendUrl = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:4000';
+    const rawBackendUrl = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:4000';
+    const isLocalhost = /^(https?:\/\/)?(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$/i.test(rawBackendUrl.trim());
+    const isVercel = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
+
+    // On Vercel/cloud production, never rewrite to private loopbacks as Vercel Edge blocks private IP resolution with DNS_HOSTNAME_RESOLVED_PRIVATE
+    if (isVercel && isLocalhost && !process.env.BACKEND_INTERNAL_URL && !process.env.NEXT_PUBLIC_API_URL) {
+      return [];
+    }
+
+    const backendUrl = rawBackendUrl.replace(/\/$/, '');
     return [
       {
         source: '/auth/:path*',

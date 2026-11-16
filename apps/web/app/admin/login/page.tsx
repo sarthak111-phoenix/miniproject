@@ -29,7 +29,10 @@ export default function AdminLoginPage() {
       const { data, text } = await safeParseJson(res);
 
       if (!res.ok) {
-        const message = data?.message || data?.error || text || 'Authentication failed.';
+        let message = data?.message || data?.error || text || 'Authentication failed.';
+        if (typeof text === 'string' && (text.includes('DNS_HOSTNAME_RESOLVED_PRIVATE') || text.includes('The page could not be found') || res.status === 404)) {
+          message = 'Backend API is not reachable from Vercel. Please set NEXT_PUBLIC_API_URL in your Vercel Project Settings to your deployed backend URL.';
+        }
         setError(message);
         setLoading(false);
         return;
@@ -45,7 +48,7 @@ export default function AdminLoginPage() {
       setAdminSession(data.token, data.user);
       router.push('/admin');
     } catch (err: any) {
-      setError('Could not connect to authentication server. Please verify backend is running on port 4000.');
+      setError('Could not connect to authentication backend. Please ensure the backend is running and NEXT_PUBLIC_API_URL is properly configured.');
       setLoading(false);
     }
   }
