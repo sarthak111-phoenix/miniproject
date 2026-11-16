@@ -80,7 +80,7 @@ build
 !**/.env.example
 !**/.env.template
 
-# Python
+# Python virtual environments (scoped to avoid matching project source like apps/web/lib)
 __pycache__/
 *.py[cod]
 *$py.class
@@ -90,14 +90,14 @@ env/
 venv/
 .venv/
 ENV/
-build/
 develop-eggs/
-dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+.venv/lib/
+.venv/lib64/
+venv/lib/
+venv/lib64/
 parts/
 sdist/
 var/
@@ -106,8 +106,13 @@ wheels/
 .installed.cfg
 *.egg
 
-# Vector DB / Local data
-data/
+# Explicitly ensure source library & data directories are tracked
+!apps/web/lib/**
+!**/lib/**
+!apps/backend/data/**
+
+# Vector DB / Local data (root only)
+/data/
 *.sqlite
 *.db
 
