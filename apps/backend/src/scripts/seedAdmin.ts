@@ -360,6 +360,21 @@ export async function seedAdminSystem() {
     console.log(`✓ Created new Super Admin account: ${adminEmail}`);
   }
 
+  // Ensure owner email is also linked to Super Admin if present
+  const ownerEmail = 'varshneysarthak18@gmail.com';
+  const existingOwner = await prisma.user.findUnique({ where: { email: ownerEmail } });
+  if (existingOwner) {
+    await prisma.user.update({
+      where: { id: existingOwner.id },
+      data: {
+        role: 'superadmin',
+        adminRoleId: superAdminRoleId,
+        status: 'active',
+      },
+    });
+    console.log(`✓ Ensured owner account has Super Admin privileges: ${ownerEmail}`);
+  }
+
   // 7. Seed Sample Support Ticket if none exist
   const ticketCount = await prisma.supportTicket.count();
   if (ticketCount === 0) {

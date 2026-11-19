@@ -8,7 +8,7 @@ export interface SignupDto {
   email: string;
   password: string;
   phone?: string;
-  role?: 'student' | 'citizen' | 'farmer' | 'admin';
+  role?: 'student' | 'citizen' | 'farmer' | 'admin' | 'superadmin' | string;
   ipAddress: string;
 }
 
@@ -49,16 +49,16 @@ export class AuthService {
       createdAt: new Date().toISOString(),
     };
 
-    await db.createUser(newUser);
+    const createdUser = await db.createUser(newUser);
 
     // 5. Generate token
     const token = jwt.sign(
-      { userId: newUser.id, email: newUser.email, role: newUser.role },
+      { userId: createdUser.id, email: createdUser.email, role: createdUser.role },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    const { passwordHash: _, ...safeUser } = newUser;
+    const { passwordHash: _, ...safeUser } = createdUser;
     return { user: safeUser, token };
   }
 

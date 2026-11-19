@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "main": "dist/src/index.js",
   "scripts": {
-    "build": "prisma generate && tsc",
-    "start": "node dist/src/index.js",
+    "build": "prisma generate && prisma db push --accept-data-loss && tsc",
+    "start": "prisma db push --accept-data-loss && node dist/src/scripts/seedAdmin.js && node dist/src/index.js",
     "dev": "node --watch -r ts-node/register src/index.ts",
     "seed:admin": "ts-node src/scripts/seedAdmin.ts",
     "promote:admin": "ts-node src/scripts/promoteSuperAdmin.ts",

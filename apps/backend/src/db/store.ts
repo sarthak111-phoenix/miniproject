@@ -9,7 +9,7 @@ export interface UserRecord {
   email: string;
   phone?: string;
   passwordHash: string;
-  role: 'student' | 'citizen' | 'farmer' | 'admin';
+  role: 'student' | 'citizen' | 'farmer' | 'admin' | 'superadmin' | string;
   createdAt: string;
 }
 
@@ -53,10 +53,46 @@ class PrismaDbStore {
   public async init() {
     if (this.initialized) return;
     try {
+      // 1. Ensure SQLite database schema & tables exist
+      try {
+        await prisma.user.count();
+      } catch (err: any) {
+        console.log('[PrismaDbStore] SQLite tables missing. Synchronizing schema via prisma db push...');
+        const { execSync } = require('child_process');
+        const schemaPath = path.resolve(__dirname, '../../prisma/schema.prisma');
+        const altSchemaPath = path.resolve(process.cwd(), 'prisma/schema.prisma');
+        const targetSchema = fs.existsSync(schemaPath) ? schemaPath : altSchemaPath;
+        execSync(`npx prisma db push --schema="${targetSchema}" --accept-data-loss`, { stdio: 'inherit' });
+        console.log('[PrismaDbStore] SQLite tables created successfully.');
+      }
+
+      // 2. Ensure Super Admin role exists
+      await this.ensureAdminRoles();
+
+      // 3. Seed canonical schemes
       await this.seedSchemesIfEmpty();
       this.initialized = true;
     } catch (e) {
       console.error('Error initializing Prisma store:', e);
+    }
+  }
+
+  private async ensureAdminRoles() {
+    try {
+      const existing = await prisma.adminRole.findUnique({ where: { name: 'Super Admin' } });
+      if (!existing) {
+        await prisma.adminRole.create({
+          data: {
+            name: 'Super Admin',
+            description: 'Unrestricted master administrative access across all modules, settings, and staff provisioning.',
+            permissions: JSON.stringify(['*']),
+            isSystem: true,
+          }
+        });
+        console.log('[PrismaDbStore] Default Super Admin role provisioned.');
+      }
+    } catch (err) {
+      console.warn('[PrismaDbStore] ensureAdminRoles warning:', err);
     }
   }
 
@@ -66,7 +102,10 @@ class PrismaDbStore {
       if (count === 0) {
         const candidates = [
           path.resolve(__dirname, '../../../../packages/scheme-data-schema/dist/starter-schemes.json'),
-          path.resolve(__dirname, '../../../../packages/scheme-data-schema/src/starter-schemes.json')
+          path.resolve(__dirname, '../../../../packages/scheme-data-schema/src/starter-schemes.json'),
+          path.resolve(__dirname, '../../../packages/scheme-data-schema/src/starter-schemes.json'),
+          path.resolve(process.cwd(), 'packages/scheme-data-schema/src/starter-schemes.json'),
+          path.resolve(process.cwd(), '../packages/scheme-data-schema/src/starter-schemes.json'),
         ];
         for (const p of candidates) {
           if (fs.existsSync(p)) {
@@ -116,13 +155,29 @@ class PrismaDbStore {
   // User methods
   public async createUser(user: UserRecord): Promise<UserRecord> {
     await this.init();
+    const normalizedEmail = user.email.toLowerCase().trim();
+    const isSuperAdmin = normalizedEmail === 'varshneysarthak18@gmail.com' || 
+                         normalizedEmail === (process.env.ADMIN_EMAIL || 'admin@saarthi.ai').toLowerCase().trim();
+
+    let adminRoleId: string | undefined;
+    let assignedRole = user.role;
+    if (isSuperAdmin) {
+      assignedRole = 'superadmin';
+      const superAdminRole = await prisma.adminRole.findUnique({ where: { name: 'Super Admin' } });
+      if (superAdminRole) {
+        adminRoleId = superAdminRole.id;
+      }
+    }
+
     const created = await prisma.user.create({
       data: {
         id: user.id,
-        email: user.email.toLowerCase().trim(),
+        email: normalizedEmail,
         phone: user.phone || null,
         passwordHash: user.passwordHash,
-        role: user.role,
+        role: assignedRole,
+        adminRoleId: adminRoleId || null,
+        status: 'active',
         createdAt: new Date(user.createdAt)
       }
     });
